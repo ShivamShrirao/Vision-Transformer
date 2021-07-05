@@ -34,16 +34,22 @@ class TransformerEncoder(nn.Module):
     def __init__(self, emb_dim, nheads, dim_feedforward, num_layers):
         super().__init__()
         self.blocks = nn.Sequential(*[TransformerEncoderLayer(emb_dim, nheads, dim_feedforward) for _ in range(num_layers)])
+        self.reset_parameters()
 
     def forward(self, x):       # [seq_len, B, emb_dim]
         return self.blocks(x)
 
+    def reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
 
 class VisionTransformer(nn.Module):
-    def __init__(self, transformer, img_size=224, patch_size=16, emb_dim=512, num_classes=100, representation_dim=None, dp_rate=0.1, reset_params=True):
+    def __init__(self, transformer, img_size=224, patch_size=16, emb_dim=512, num_classes=100, representation_dim=None, dp_rate=0.1):
         super().__init__()
-        self.proj_patch = nn.Conv2d(3, emb_dim, kernel_size=patch_size, stride=patch_size, bias=False)
-        
+        self.proj_patch = nn.Conv2d(3, emb_dim, kernel_size=patch_size, stride=patch_size)
+
         scale = emb_dim ** -0.5
         self.cls_token = nn.Parameter(scale * torch.randn(emb_dim))
         seq_len = (img_size//patch_size) ** 2
@@ -52,7 +58,7 @@ class VisionTransformer(nn.Module):
 
         self.transformer = transformer
         self.post_norm = nn.LayerNorm(emb_dim)
-        
+
         nfeatures = emb_dim
         if representation_dim is not None:
             nfeatures = representation_dim
@@ -60,13 +66,6 @@ class VisionTransformer(nn.Module):
         else:
             self.pre_logits = nn.Identity()
         self.head = nn.Linear(nfeatures, num_classes)
-        
-        if reset_params: self.reset_parameters()
-
-    def reset_parameters(self):
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
 
     def forward_features(self, x):
         # [B, C, H, W]

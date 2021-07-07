@@ -51,7 +51,7 @@ class VisionTransformer(nn.Module):
         self.proj_patch = nn.Conv2d(3, emb_dim, kernel_size=patch_size, stride=patch_size)
 
         scale = emb_dim ** -0.5
-        self.cls_token = nn.Parameter(scale * torch.randn(emb_dim))
+        self.cls_token = nn.Parameter(torch.zeros(emb_dim))
         seq_len = (img_size//patch_size) ** 2
         self.pos_emb = nn.Parameter(scale * torch.randn(seq_len+1, 1, emb_dim))
         self.dropout = nn.Dropout(dp_rate)
@@ -66,6 +66,10 @@ class VisionTransformer(nn.Module):
         else:
             self.pre_logits = nn.Identity()
         self.head = nn.Linear(nfeatures, num_classes)
+    
+    def param_init(self):
+        nn.init.zeros_(self.head.weight)
+        nn.init.zeros_(self.head.bias)
 
     def forward_features(self, x):  # [B, C, H, W]
         x = self.proj_patch(x)      # [B, emb_dim, H//patch, W//patch]

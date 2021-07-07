@@ -9,7 +9,7 @@ from collections import OrderedDict
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, emb_dim, nheads, dim_feedforward, dp_rate=0.1):
         super().__init__()
-        self.mhsa = nn.MultiheadAttention(emb_dim, nheads)
+        self.mha = nn.MultiheadAttention(emb_dim, nheads)
         self.ln1 = nn.LayerNorm(emb_dim)
         self.mlp = nn.Sequential(OrderedDict([
             ('fc1', nn.Linear(emb_dim, dim_feedforward)),
@@ -22,7 +22,7 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout2 = nn.Dropout(dp_rate)
 
     def attention(self, x):
-        return self.mhsa(x, x, x, need_weights=False)[0]
+        return self.mha(x, x, x, need_weights=False)[0]
 
     def forward(self, x):       # [seq_len, B, emb_dim]
         x = x + self.dropout1(self.attention(self.ln1(x)))
@@ -67,8 +67,7 @@ class VisionTransformer(nn.Module):
             self.pre_logits = nn.Identity()
         self.head = nn.Linear(nfeatures, num_classes)
 
-    def forward_features(self, x):
-        # [B, C, H, W]
+    def forward_features(self, x):  # [B, C, H, W]
         x = self.proj_patch(x)      # [B, emb_dim, H//patch, W//patch]
         x = x.flatten(-2)           # [B, emb_dim, seq_len]
         x = x.permute(2,0,1)        # [seq_len, B, emb_dim]
